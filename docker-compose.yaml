@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: HARDJOJO
+      POSTGRES_PASSWORD: HARDJOJO
+      POSTGRES_DB: my_database
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - auth-network
+
+  adminer:
+    image: adminer
+    container_name: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    networks:
+      - auth-network
+
+  # redis:
+  #     image: docker.io/bitnami/redis:7.4
+  #     environment:
+  #       # ALLOW_EMPTY_PASSWORD is recommended only for development.
+  #       - ALLOW_EMPTY_PASSWORD=yes
+  #       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
+  #     ports:
+  #       - '6379:6379'
+  #     volumes:
+  #       - 'redis_data:/bitnami/redis/data'
+  #     networks:
+  #       - auth-network
+  # pas besoin de zookeeper avec cette version de kafka qui comprends kraft
+  kafka-broker:
+    image: apache/kafka:latest
+    container_name: kafka-broker
+    ports:
+      - "9092:9092"  # Expose Kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://localhost:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093 # host controller pour vote concurrentiel
+      # KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093  
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1 # mettre 3 en production
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1 # 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1 # 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+      
+    networks:
+      - auth-network
+
+
+volumes:
+  postgres_data:
+  redis_data:
+    driver: local
+
+networks:
+  auth-network:
+    driver: bridge
